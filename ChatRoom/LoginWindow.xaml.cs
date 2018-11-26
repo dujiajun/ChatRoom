@@ -10,6 +10,8 @@ namespace ChatRoom
     /// </summary>
     public partial class LoginWindow : Window
     {
+        private Global instance = Global.GetInstance();
+
         public LoginWindow()
         {
             InitializeComponent();
@@ -19,17 +21,19 @@ namespace ChatRoom
         {
             try
             {
-                Global.getInstance().socketServer = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+                instance.socketServer = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
                 IPAddress IP = IPAddress.Parse(Tb_ServerAddr.Text.Trim());
-                Global.getInstance().socketServer.Connect(IP, Convert.ToInt32(Tb_ServerPort.Text.Trim()));
-                Global.getInstance().NickName = Tb_Nickname.Text;
+                instance.socketServer.Connect(IP, Convert.ToInt32(Tb_ServerPort.Text.Trim()));
+                instance.NickName = Tb_Nickname.Text;
+                instance.Login();
+                instance.StartReceive();
                 GroupChatWindow window = new GroupChatWindow();
                 window.Show();
                 Close();
             }
-            catch(Exception ex)
+            catch(Exception)
             {
-                MessageBox.Show("Connectint Error: " + ex.ToString());
+                MessageBox.Show("服务器连接失败！");
             }
         }
     }

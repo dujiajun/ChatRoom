@@ -58,9 +58,7 @@ namespace ChatServer
                 socketSend = watch.Accept();
                 string IP = socketSend.RemoteEndPoint.ToString();
                 dictSocket.Add(IP, socketSend);
-                //Users.Add(IP);
-                //Dispatcher.Invoke(new dg_SyncUserList(SyncUserList));
-                string message = System.DateTime.Now.ToString();
+                string message = DateTime.Now.ToString();
                 message += ": 用户" + IP + "连接";
                 Dispatcher.Invoke(new dg_AddLog(AddLog), message);
 
@@ -76,26 +74,28 @@ namespace ChatServer
         {
             foreach (User user in Users)
             {
-                Socket send = dictSocket[user.IP];
-                if (send != null)
+                Forward(buffer, user.IP);
+            }
+        }
+        
+        private void Forward(byte[] buffer,string IP)
+        {
+            Socket send = dictSocket[IP];
+            if (send != null)
+            {
+                try
                 {
-                    try
-                    {
-                        send.Send(buffer);
-                    }
-                    catch(Exception ex)
-                    {
-                        Dispatcher.Invoke(new dg_AddLog(AddLog), ex.ToString());
-                    }
+                    send.Send(buffer);
+                }
+                catch (Exception ex)
+                {
+                    Dispatcher.Invoke(new dg_AddLog(AddLog), ex.ToString());
                 }
             }
         }
 
         private void SyncUserList()
         {
-            /*Lb_User.Items.Clear();
-            foreach (string user in Users)
-                Lb_User.Items.Add(user);*/
             Lb_User.ItemsSource = null;
             Lb_User.ItemsSource = Users;
 
@@ -137,7 +137,6 @@ namespace ChatServer
                                     Dispatcher.Invoke(new dg_SyncUserList(SyncUserList));
                                     break;
                                 case LOGOUT:
-                                    //RemoveUserByIP(remoteIP);
                                     Users.RemoveAll((user) => user.IP.Equals(remoteIP));
                                     message += "用户" + remoteIP + "退出登录";
                                     Dispatcher.Invoke(new dg_SyncUserList(SyncUserList));
@@ -145,6 +144,11 @@ namespace ChatServer
                                 case GROUPCHAT:
                                     BroadCast(buffer);
                                     message += "用户" + remoteIP + "群发消息";
+                                    break;
+                                case SINGLECHAT:
+                                    string target = jobj["target"].ToString();
+                                    Forward(buffer, target);
+                                    message += "用户" + remoteIP + "向用户" + target + "发送消息";
                                     break;
                                 default:
                                     message = "";
@@ -160,7 +164,6 @@ namespace ChatServer
             catch (SocketException)
             {
                 string remoteIP = recv.RemoteEndPoint.ToString();
-                //RemoveUserByIP(remoteIP);
                 Users.RemoveAll((user) => user.IP.Equals(remoteIP));
                 string message = DateTime.Now.ToString() + ": ";
                 message += "用户" + remoteIP + "退出登录";
@@ -168,19 +171,6 @@ namespace ChatServer
                 Dispatcher.Invoke(new dg_AddLog(AddLog), message);
             }
         }
-
-        /*void RemoveUserByIP(string IP)
-        {
-            foreach (User user in Users)
-            {
-                if (user.IP.Equals(IP))
-                {
-                    MessageBox.Show(Users.Remove(user).ToString());
-                    
-                    break;
-                }  
-            }
-        }*/
 
         private class UserListObj
         {
@@ -221,6 +211,8 @@ namespace ChatServer
             CloseSocket();
             Btn_Start.IsEnabled = true;
             Btn_Stop.IsEnabled = false;
+            Users.Clear();
+            SyncUserList();
         }
         private void CloseSocket()
         {
