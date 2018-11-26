@@ -1,0 +1,32 @@
+﻿<Window x:Class="ChatRoom.LoginWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:ChatRoom"
+        mc:Ignorable="d"
+        Title="登录" Height="450" Width="600">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="1*"/>
+            <RowDefinition Height="1*"/>
+            <RowDefinition Height="1*"/>
+            <RowDefinition Height="1*"/>
+            <RowDefinition Height="1*"/>
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="1*"/>
+            <ColumnDefinition Width="2*"/>
+            <ColumnDefinition Width="1*"/>
+        </Grid.ColumnDefinitions>
+        <Label Content="服务器地址：" Grid.Row="1" Grid.RowSpan="1" Grid.Column="0" Grid.ColumnSpan="1" Margin="0" FontSize="16" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+        <Label Content="端口：" Grid.Row="2" Grid.RowSpan="1" Grid.Column="0" Grid.ColumnSpan="1" HorizontalAlignment="Right" VerticalAlignment="Center" FontSize="16"/>
+        <Label Content="昵称：" Grid.Row="3" Grid.RowSpan="1" Grid.Column="0" Grid.ColumnSpan="1" FontSize="16" VerticalAlignment="Center" HorizontalAlignment="Right"/>
+        
+        <TextBox x:Name="Tb_ServerAddr" Text="127.0.0.1" Grid.Row="1" Grid.RowSpan="1" Grid.Column="1" Grid.ColumnSpan="1" VerticalAlignment="Center" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" FontSize="16" MinHeight="40"/>
+        <TextBox x:Name="Tb_ServerPort" Text="2333" Grid.Row="2" Grid.RowSpan="1" Grid.Column="1" Grid.ColumnSpan="1" FontSize="16" VerticalAlignment="Center" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" MinHeight="40"/>
+        <TextBox x:Name="Tb_Nickname" Text="nicky" Grid.Row="3" Grid.RowSpan="1" Grid.Column="1" Grid.ColumnSpan="1" FontSize="16" VerticalAlignment="Center" HorizontalContentAlignment="Center" MinHeight="40" VerticalContentAlignment="Center"/>
+
+        <Button x:Name="Btn_Login" Content="登录" Grid.Row="1" Grid.RowSpan="3" Grid.Column="2" Grid.ColumnSpan="1" FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center" MinWidth="100" MinHeight="100" BorderThickness="0" Click="Btn_Login_Click"/>
+    </Grid>
+</Window>
