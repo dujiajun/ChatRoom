@@ -59,7 +59,7 @@ namespace ChatRoom
                     return;
                 }
                 TextMessage message = new TextMessage(Global.GROUPCHAT, Tb_Send.Text);
-                instance.SendMessage(message, Global.TEXT);
+                instance.SendMessage(message);
                 Tb_Send.Text = "";
                 Tb_Send.Focus();
             }
@@ -79,11 +79,7 @@ namespace ChatRoom
 
         private void Btn_Image_Click(object sender, RoutedEventArgs e)
         {
-            instance.Logout();
-            LoginWindow window = new LoginWindow();
-            window.Show();
-            Close();
-
+            MessageBox.Show("尚未开发，敬请期待！");
         }
 
         private void ListBoxItem_MouseDoubleClick(object sender, RoutedEventArgs e)
@@ -101,7 +97,7 @@ namespace ChatRoom
                 {
                     RemoteIP = user.IP
                 };
-                window.NickName = user.NickName;
+                window.SetNickName(user.NickName);
                 instance.singleWindows.Add(window);
                 window.Show();
             }
@@ -119,10 +115,11 @@ namespace ChatRoom
             {
                 RemoteIP = remoteIP
             };
-            window.NickName = NickName;
+            window.SetNickName(NickName);
             instance.singleWindows.Add(window);
             window.Show();
-            window.NewMessage(msg);
+            if (!msg.Equals(string.Empty))
+                window.NewMessage(msg);
         }
 
         public void CloseAllWindow()

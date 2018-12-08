@@ -2,6 +2,7 @@
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
@@ -15,12 +16,12 @@ namespace ChatRoom
 
         private Global()
         {
-            
+
         }
 
         public static Global GetInstance()
         {
-            if(instance==null)
+            if (instance == null)
                 instance = new Global();
             return instance;
         }
@@ -43,61 +44,92 @@ namespace ChatRoom
         private void Receive(object obj)
         {
             Socket recv = obj as Socket;
+            string filename = "";
+            long filelength = 0;
+            long recvlength = 0;
+            SingleChatWindow window = null;
             try
             {
                 while (true)
                 {
-                    byte[] buffer = new byte[2048];
+                    byte[] buffer = new byte[1024 * 1024 + 2048];
                     int count = recv.Receive(buffer);
                     if (count == 0)
                         break;
-                    switch (buffer[0])
+                    //switch (buffer[0])
+                    //{
+                    //    case TEXT:
+                    int offset = BitConverter.ToInt32(buffer, 0);
+                    string str = Encoding.Default.GetString(buffer, 4, offset);
+                    JObject jobj = (JObject)JsonConvert.DeserializeObject(str);
+
+                    switch (jobj["action"].ToObject<int>())
                     {
-                        case TEXT:
-                            string str = Encoding.Default.GetString(buffer, 1, count - 1);
-                            JObject jobj = (JObject)JsonConvert.DeserializeObject(str);
-
-                            switch (jobj["action"].ToObject<int>())
+                        case GROUPCHAT:
                             {
-                                case GROUPCHAT:
-                                    {
-                                        string remoteIP = jobj["IP"].ToString();
-                                        string nickname = Users.Find(x => x.IP.Equals(remoteIP)).NickName;
-                                        string msg = GetFormattedMessage(nickname, jobj["time"].ToString(), jobj["content"].ToString());
-                                        groupChatWindow.NewMessage(msg);
-                                    }
-                                    break;
-                                case USERLISTSYNC:
-                                    {
-                                        Users.Clear();
-                                        Users = jobj["Users"].ToObject<List<User>>();
-                                        groupChatWindow.Sync();
-                                    }
-                                    break;
-                                case SINGLECHAT:
-                                    {
-                                        string remoteIP = jobj["IP"].ToString();
-                                        string nickname = Users.Find(x => x.IP.Equals(remoteIP)).NickName;
-                                        string content = jobj["content"].ToString();
-                                        string msg = GetFormattedMessage(nickname, jobj["time"].ToString(), jobj["content"].ToString());
-                                        SingleChatWindow window = singleWindows.Find(win => win.RemoteIP.Equals(remoteIP));
-                                        if (window == null)
-                                        {
-                                            groupChatWindow.NewSingleChatWindow(remoteIP, NickName, msg);
-                                        }
-                                        else
-                                        {
-                                            window.NewMessage(msg);
-                                        }
-                                    }   
-                                    break;
-                                default:
-                                    break;
+                                string remoteIP = jobj["IP"].ToString();
+                                string nickname = Users.Find(x => x.IP.Equals(remoteIP)).NickName;
+                                string msg = GetFormattedMessage(nickname, jobj["time"].ToString(), jobj["content"].ToString());
+                                groupChatWindow.NewMessage(msg);
                             }
-
+                            break;
+                        case USERLISTSYNC:
+                            {
+                                Users.Clear();
+                                Users = jobj["Users"].ToObject<List<User>>();
+                                groupChatWindow.Sync();
+                            }
+                            break;
+                        case SINGLECHAT:
+                            {
+                                string remoteIP = jobj["IP"].ToString();
+                                string nickname = Users.Find(x => x.IP.Equals(remoteIP)).NickName;
+                                string content = jobj["content"].ToString();
+                                string msg = GetFormattedMessage(nickname, jobj["time"].ToString(), jobj["content"].ToString());
+                                window = singleWindows.Find(win => win.RemoteIP.Equals(remoteIP));
+                                if (window == null)
+                                {
+                                    groupChatWindow.NewSingleChatWindow(remoteIP, NickName, msg);
+                                }
+                                else
+                                {
+                                    window.NewMessage(msg);
+                                }
+                            }
+                            break;
+                        case SENDFILE:
+                            {
+                                string remoteIP = jobj["IP"].ToString();
+                                filename = jobj["filename"].ToString();
+                                filelength = jobj["filelength"].ToObject<long>();
+                                recvlength = 0;
+                                window = singleWindows.Find(win => win.RemoteIP.Equals(remoteIP));
+                                if (window == null)
+                                {
+                                    groupChatWindow.NewSingleChatWindow(remoteIP, NickName, string.Empty);
+                                }
+                                else
+                                {
+                                //    Console.WriteLine("{0} {1}", recvlength, filelength);
+                                    window.RefreshProgress((double)recvlength / filelength);
+                                }
+                                if (recvlength == 0)
+                                {
+                                    if (File.Exists(filename))
+                                        File.Delete(filename);
+                                }
+                                int size = BitConverter.ToInt32(buffer, 4 + offset);
+                                using (FileStream fs = new FileStream(filename, FileMode.Append, FileAccess.Write))
+                                {
+                                    fs.Write(buffer, 4 + offset + 4, size);
+                                    recvlength += size;
+                                }
+                            }
                             break;
                         default:
                             break;
+                            //   }
+                            //   break;
                     }
 
                 }
@@ -109,7 +141,7 @@ namespace ChatRoom
             }
         }
 
-        public static string GetFormattedMessage(string nickname,string time,string content)
+        public static string GetFormattedMessage(string nickname, string time, string content)
         {
             string msg = nickname + " " + time + "\n" + content;
             return msg;
@@ -125,23 +157,43 @@ namespace ChatRoom
         public const int GROUPCHAT = 2;
         public const int SINGLECHAT = 3;
         public const int USERLISTSYNC = 4;
+        public const int SENDFILE = 5;
 
         public const int TEXT = 0;
         public const int FILE = 1;
         public const int PICTURE = 2;
         public const int VOICE = 3;
 
-        public bool SendMessage(object obj, int type)
+        public bool SendMessage(object obj)
         {
             try
             {
                 string str = JsonConvert.SerializeObject(obj);
+                List<byte> bytes = new List<byte>();
+                byte[] header = Encoding.Default.GetBytes(str);
+                bytes.AddRange(BitConverter.GetBytes(header.Length));
+                bytes.AddRange(header);
+                byte[] buffer = bytes.ToArray();
+                socketServer.Send(buffer);
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+            return true;
+        }
 
-                List<byte> bytes = new List<byte>
-                {
-                    Convert.ToByte(type)
-                };
-                bytes.AddRange(Encoding.UTF8.GetBytes(str));
+        public bool SendBinary(object fileMsg, byte[] filebyte)
+        {
+            try
+            {
+                List<byte> bytes = new List<byte>();
+                string str = JsonConvert.SerializeObject(fileMsg);
+                byte[] header = Encoding.Default.GetBytes(str);
+                bytes.AddRange(BitConverter.GetBytes(header.Length));
+                bytes.AddRange(header);
+                bytes.AddRange(BitConverter.GetBytes(filebyte.Length));
+                bytes.AddRange(filebyte);
                 byte[] buffer = bytes.ToArray();
                 socketServer.Send(buffer);
             }
@@ -169,8 +221,8 @@ namespace ChatRoom
 
         public void Login()
         {
-            LoginMessage login = new LoginMessage(socketServer.LocalEndPoint.ToString(), GetInstance().NickName, LOGIN);
-            SendMessage(login, TEXT);
+            LoginMessage login = new LoginMessage(GetInstance().NickName);
+            SendMessage(login);
         }
     }
 
@@ -214,11 +266,31 @@ namespace ChatRoom
         public string NickName;
         public int action;
 
-        public LoginMessage(string iP, string NickName, int action)
+        public LoginMessage(string NickName)
         {
-            IP = iP;
+            this.IP = Global.GetInstance().socketServer.LocalEndPoint.ToString();
             this.NickName = NickName;
-            this.action = action;
+            this.action = Global.LOGIN;
+        }
+    }
+
+    public class FileInfoMessage
+    {
+        public string IP;
+        public string time;
+        public int action;
+        public string filename;
+        public long filelength;
+        public string target;
+
+        public FileInfoMessage(string filename, long filelength, string target)
+        {
+            this.IP = Global.GetInstance().socketServer.LocalEndPoint.ToString();
+            this.time = DateTime.Now.ToString();
+            this.filename = filename;
+            this.filelength = filelength;
+            this.target = target;
+            this.action = Global.SENDFILE;
         }
     }
 }
