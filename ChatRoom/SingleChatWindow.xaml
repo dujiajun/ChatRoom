@@ -26,7 +26,7 @@
             </Style>
         </Grid.Resources>
 
-        <DockPanel Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="0" Grid.RowSpan="1">
+        <DockPanel Grid.Column="0" Grid.ColumnSpan="1" Grid.Row="0" Grid.RowSpan="1">
             <Label DockPanel.Dock="Top" Content="聊天记录" FontSize="16"/>
             <ListBox x:Name="Lb_Msg" BorderThickness="0"/>
         </DockPanel>
@@ -34,7 +34,7 @@
             <Label DockPanel.Dock="Top" Content="其他功能" FontSize="16" MinWidth="40" HorizontalAlignment="Center" Margin="0"/>
             <Button x:Name="Btn_File" Content="发送文件" BorderThickness="0" FontSize="16" MinHeight="50" VerticalAlignment="Center" Margin="0" HorizontalAlignment="Left" Width="132" Click="Btn_File_Click"/>
             <ProgressBar x:Name="Pb_File" Height="10" Margin="0" Visibility="Hidden" Maximum="1" SmallChange="0.01"/>
-            <Button x:Name="Btn_Talk" Content="语音聊天" BorderThickness="0" FontSize="16" MinHeight="50" VerticalAlignment="Center" Margin="0,10,0,0"/>
+            <Button x:Name="Btn_Talk" Content="语音聊天" BorderThickness="0" FontSize="16" MinHeight="50" VerticalAlignment="Center" Margin="0,10,0,0" Click="Btn_Talk_Click"/>
         </StackPanel>
 
         <Grid Grid.Column="0" Grid.ColumnSpan="1" Grid.Row="1" Grid.RowSpan="1">

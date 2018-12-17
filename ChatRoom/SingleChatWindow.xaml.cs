@@ -103,11 +103,11 @@ namespace ChatRoom
             string strPath = obj as string;
             FileInfo file = new FileInfo(strPath);
             long filelength = file.Length;
-            if (filelength > 1024 * 1024) 
+            /*if (filelength > 1024 * 1024) 
             {
                 MessageBox.Show("仅可传输小于1MiB的文件！");
                 return;
-            }
+            }*/
             long sendlength = 0;
             string filename = file.Name;
             FileInfoMessage fileMsg = new FileInfoMessage(filename, filelength, RemoteIP);
@@ -127,6 +127,11 @@ namespace ChatRoom
         }
 
         private void Btn_Image_Click(object sender, RoutedEventArgs e)
+        {
+            MessageBox.Show("尚未开发，敬请期待！");
+        }
+
+        private void Btn_Talk_Click(object sender, RoutedEventArgs e)
         {
             MessageBox.Show("尚未开发，敬请期待！");
         }

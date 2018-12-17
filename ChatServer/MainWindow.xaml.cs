@@ -2,6 +2,7 @@
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -101,11 +102,9 @@ namespace ChatServer
 
             UserListObj obj = new UserListObj(Users, USERLISTSYNC);
             string str = JsonConvert.SerializeObject(obj);
-            List<byte> bytes = new List<byte>
-                {
-                    Convert.ToByte(TEXT)
-                };
+            List<byte> bytes = new List<byte>();
             byte[] header = Encoding.UTF8.GetBytes(str);
+            bytes.AddRange(BitConverter.GetBytes(header.Length));
             bytes.AddRange(BitConverter.GetBytes(header.Length));
             bytes.AddRange(header);
             byte[] buffer = bytes.ToArray();
@@ -115,61 +114,87 @@ namespace ChatServer
         private void Receive(object obj)
         {
             Socket recv = obj as Socket;
+            MemoryStream memoryStream = new MemoryStream();
             try
             {
                 while (true)
                 {
                     byte[] buffer = new byte[1024 * 1024 + 2048];
                     int count = recv.Receive(buffer);
+
+                    memoryStream.Write(buffer, 0, count);
+                    buffer = memoryStream.ToArray();
+
                     if (count == 0)
                         break;
-                    //switch (buffer[0])
-                    //{
-                    //    case TEXT:
-                    int offset = BitConverter.ToInt32(buffer, 0);
-                    string str = Encoding.Default.GetString(buffer, 4, offset);
-                    JObject jobj = (JObject)JsonConvert.DeserializeObject(str);
-                    string message = DateTime.Now.ToString() + ": ";
-                    string remoteIP = recv.RemoteEndPoint.ToString();
-                    switch (jobj["action"].ToObject<int>())
-                    {
-                        case LOGIN:
-                            Users.Add(new User(remoteIP, jobj["NickName"].ToString()));
-                            message += "用户" + remoteIP + "登录";
-                            Dispatcher.Invoke(new dg_SyncUserList(SyncUserList));
-                            break;
-                        case LOGOUT:
-                            Users.RemoveAll((user) => user.IP.Equals(remoteIP));
-                            message += "用户" + remoteIP + "退出登录";
-                            Dispatcher.Invoke(new dg_SyncUserList(SyncUserList));
-                            break;
-                        case GROUPCHAT:
-                            BroadCast(buffer);
-                            message += "用户" + remoteIP + "群发消息";
-                            break;
-                        case SINGLECHAT:
-                            {
-                                string target = jobj["target"].ToString();
-                                Forward(buffer, target);
-                                message += "用户" + remoteIP + "向用户" + target + "发送消息";
-                            }
-                            break;
-                        case SENDFILE:
-                            {
-                            //    Console.WriteLine(offset);
-                                string target = jobj["target"].ToString();
-                                Forward(buffer, target);
-                                message += "用户" + remoteIP + "向用户" + target + "发送文件";
-                            }
-                            break;
+                    int startIndex = 0;
 
-                        default:
-                            message = "";
+                    string message = DateTime.Now.ToString() + ": ";
+
+                    while (true)
+                    {
+                        int totalLength = 0, headerLength = 0;
+                        if (buffer.Length - startIndex < 4)
+                            totalLength = -1;
+                        else
+                            totalLength = BitConverter.ToInt32(buffer, startIndex);
+
+                        if ((buffer.Length - startIndex < (totalLength + 8)) || totalLength == -1) 
+                        {
+                            memoryStream.Close();
+                            memoryStream.Dispose();
+                            memoryStream = new MemoryStream();
+                            memoryStream.Write(buffer, startIndex, buffer.Length - startIndex);
                             break;
+                        }
+
+                        headerLength = BitConverter.ToInt32(buffer, startIndex + 4);
+
+                        string header = Encoding.Default.GetString(buffer, startIndex + 8, headerLength);
+                        JObject jobj = (JObject)JsonConvert.DeserializeObject(header);
+                        byte[] package = new byte[totalLength + 8];
+                        Array.Copy(buffer, startIndex, package, 0, totalLength + 8);
+                        string remoteIP = recv.RemoteEndPoint.ToString();
+                        switch (jobj["action"].ToObject<int>())
+                        {
+                            case LOGIN:
+                                Users.Add(new User(remoteIP, jobj["NickName"].ToString()));
+                                message += "用户" + remoteIP + "登录";
+                                Dispatcher.Invoke(new dg_SyncUserList(SyncUserList));
+                                break;
+                            case LOGOUT:
+                                Users.RemoveAll((user) => user.IP.Equals(remoteIP));
+                                message += "用户" + remoteIP + "退出登录";
+                                Dispatcher.Invoke(new dg_SyncUserList(SyncUserList));
+                                break;
+                            case GROUPCHAT:
+                                BroadCast(package);
+                                message += "用户" + remoteIP + "群发消息";
+                                break;
+                            case SINGLECHAT:
+                                {
+                                    string target = jobj["target"].ToString();
+                                    Forward(package, target);
+                                    message += "用户" + remoteIP + "向用户" + target + "发送消息";
+                                }
+                                break;
+                            case SENDFILE:
+                                {
+                                    string target = jobj["target"].ToString();
+                                    Forward(package, target);
+                                    message += "用户" + remoteIP + "向用户" + target + "发送文件";
+                                }
+                                
+                                break;
+
+                            default:
+                                message = "";
+                                break;
+                        }
+                        startIndex += totalLength + 8;
                     }
+                        
                     Dispatcher.Invoke(new dg_AddLog(AddLog), message);
-                    //       break;
-                    //}
                 }
             }
             catch (SocketException)
@@ -233,10 +258,6 @@ namespace ChatServer
                 socketSend.Close();
             if (AcceptSocketThread != null)
                 AcceptSocketThread.Abort();
-        }
-        private void Btn_Send_Click(object sender, RoutedEventArgs e)
-        {
-
         }
 
         private void MainWindow_Closing(object sender, System.ComponentModel.CancelEventArgs e)

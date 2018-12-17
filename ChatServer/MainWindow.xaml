@@ -50,11 +50,8 @@
             </ListBox>
         </StackPanel>
         <StackPanel Grid.Column="2">
-            <Label Content="系统公告：" FontSize="16" Margin="5,0,0,0"/>
-            <TextBox x:Name="Tb_Notice" Text="" Height="100" FontSize="16" BorderThickness="0" Margin="5,0"/>
-            <Button x:Name="Btn_Send" Content="发送系统公告" FontSize="16" Margin="5,5,5,0" BorderThickness="0" Height="32" Click="Btn_Send_Click"/>
             <Label Content="日志：" FontSize="16" Margin="5,0,0,0"/>
-            <TextBox x:Name="Tb_Log" Text="" FontSize="12" BorderThickness="0" Margin="5,0,4.8,0" Height="217" MinHeight="97" TextWrapping="WrapWithOverflow" IsReadOnly="True"/>
+            <TextBox x:Name="Tb_Log" Text="" FontSize="12" BorderThickness="0" Margin="5,0" Height="380" MinHeight="97" TextWrapping="WrapWithOverflow" IsReadOnly="True"/>
 
         </StackPanel>
 
